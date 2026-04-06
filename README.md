@@ -1,63 +1,80 @@
-# MHServerEmu
+# MHServerEmuTurbo
 
-MHServerEmu is a server emulator for Marvel Heroes.
+A fork of [MHServerEmu](https://github.com/Crypto137/MHServerEmu) — the server emulator for
+**Marvel Heroes Omega 2.16a** — focused on quality-of-life improvements and grind reduction.
 
-The only currently supported version of the game client is **1.52.0.1700** (also known as **2.16a**) released on September 7th, 2017.
+The goal is to make the private server experience more enjoyable by removing the tedious parts
+of the original game while keeping the core gameplay intact.
 
-We post development progress reports on our [blog](https://crypto137.github.io/MHServerEmu/). You can find additional information on various topics in the [documentation](./docs/Index.md). If you would like to discuss this project and/or help with its development, feel free to join our [Discord](https://discord.gg/hjR8Bj52t3).
+## What's Different from Upstream
 
-## Download
+### Current Features
 
-We provide two kinds of builds: stable and nightly.
+- **Loot Vaporizer** — automatically destroys loot below a configurable rarity threshold,
+  per equipment slot. Configured per-player via the in-game overlay (`src/mh-overlay`).
 
-|                      | Stable         | Nightly               |
-| -------------------- | -------------- | --------------------- |
-| **Update Frequency** | Quarterly      | Daily                 |
-| **Features**         | Fewer          | More                  |
-| **Stability**        | High           | Medium                |
-| **Platforms**        | Windows        | Windows / Linux       |
-| **Configuration**    | Pre-Configured | Just the Server Files |
+### Planned / In Progress
 
-If you are setting the server up for the first time and/or unsure which one to use, we recommend you to start with a stable build. See [Initial Setup](./docs/Setup/InitialSetup.md) for information on how to set the server up.
+- More QoL settings exposed through the overlay UI
+- Additional grind-reduction options
 
-You can always upgrade from stable to nightly simply by downloading the latest nightly build and overwriting your stable files.
+## Components
 
-### Stable
+| Component | Description |
+|---|---|
+| `src/` | Server source (C#, .NET) — runs on Linux |
+| `src/mh-overlay/` | In-game D3D9 overlay DLL (C++) — runs on Windows, injected into the game client |
 
-[![Stable Release](https://img.shields.io/github/v/release/Crypto137/MHServerEmu?include_prereleases)](https://github.com/Crypto137/MHServerEmu/releases)
+The overlay communicates with the server over HTTP. See [`src/mh-overlay/README.md`](src/mh-overlay/README.md)
+for setup and build instructions specific to the overlay.
 
-### Nightly
+## Building
 
-[![Nightly Release (Windows x64)](https://github.com/Crypto137/MHServerEmu/actions/workflows/nightly-release-windows-x64.yml/badge.svg)](https://nightly.link/Crypto137/MHServerEmu/workflows/nightly-release-windows-x64/master?preview) [![Nightly Release (Linux x64)](https://github.com/Crypto137/MHServerEmu/actions/workflows/nightly-release-linux-x64.yml/badge.svg)](https://nightly.link/Crypto137/MHServerEmu/workflows/nightly-release-linux-x64/master?preview)
+### Server
 
-## FAQ
+```powershell
+dotnet build MHServerEmu.sln --nologo -v quiet
+```
 
-**Is the game fully playable?**
+Or use the provided build scripts:
 
-All systems and content that were in the game when it was shut down in 2017 have been restored.
+- **Windows:** `Build.bat`
+- **Linux:** `BuildLinux.bat`
 
-**Where can I download the game client?**
+### Overlay
 
-We do not provide download links for the game client for legal reasons. If you have played the game through Steam when it was live, you should be able to download it in your Steam library.
+See [`src/mh-overlay/README.md`](src/mh-overlay/README.md) for full instructions. Short version:
 
-**How to update the server?**
+```powershell
+cd src\mh-overlay
+.\build.ps1
+```
 
-Download the latest stable or nightly build and overwrite your existing files. Nightly builds can be potentially unstable, so it is recommended to back up your account database file located in `MHServerEmu\Data\Account.db` before updating.
+Output is `src/mh-overlay/build/dinput8.dll`. Copy it to your game's `Win64\` directory.
 
-**Are you going to support other versions of the game, like the ones from before the Biggest Update Ever (BUE) came out?**
+## Setup
 
-Yes, we do plan to implement support for other versions, including the final pre-BUE version (1.48) from late 2016. Currently there are no timeframes for when this is going to happen. The current work-in-progress 1.48 code is available on the [v48](https://github.com/Crypto137/MHServerEmu/tree/v48) branch.
+This fork requires the same base setup as upstream MHServerEmu. Refer to the
+[upstream setup guide](https://github.com/Crypto137/MHServerEmu/blob/master/docs/Setup/InitialSetup.md)
+to get the server running first, then apply the changes from this repo.
 
-Some early work has also been done to support version 1.10 from mid 2013. You can find the code for it in the [MHServerEmu2013](https://github.com/Crypto137/MHServerEmu2013) repository.
+The server and game client run on **separate machines** in the expected configuration:
 
-**Are you going to add new content to the game (heroes, team-ups, powers, etc.)?**
+| Component | Machine | OS |
+|---|---|---|
+| Server | Remote | Linux |
+| Game client + overlay | Local | Windows |
 
-The scope of this project is restoring the game to its original state. We do not have any plans to create custom content. However, all of our research on the game is completely open-source, and it can be potentially used by others in such endeavors.
+The overlay's `ServerBase` must be set to the Linux server's IP address in
+`gameoptions.ini` (next to `MarvelHeroesOmega.exe`):
 
-**Are you going to make improvements to the game client (e.g. upgrade graphics)?**
+```ini
+[Overlay]
+ServerBase=http://<server-ip>:8080
+```
 
-No, we do not touch the client side of the game in any way. This project is a recreation of only the server backend needed to run the game.
+## Upstream
 
-**I have problems with setting the server up.**
-
-Feel free to join our [Discord](https://discord.gg/hjR8Bj52t3) and ask for help in the `#setup-help` channel.
+This project is built on top of [MHServerEmu](https://github.com/Crypto137/MHServerEmu)
+by Crypto137 and contributors. All credit for the base server emulation goes to them.
+Changes in this fork are tracked in the commit history.

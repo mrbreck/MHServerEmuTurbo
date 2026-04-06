@@ -19,6 +19,7 @@ namespace MHServerEmu.Core.Network.Web
         public string UserAgent { get => _httpRequest.UserAgent; }
         public string LocalPath { get => _httpRequest.Url.LocalPath; }
         public string HttpMethod { get => _httpRequest.HttpMethod; }
+        public NameValueCollection UrlQuery { get => _httpRequest.QueryString; }
         public string XForwardedFor { get => _httpRequest.Headers["X-Forwarded-For"]; }
         public string Authorization { get => _httpRequest.Headers["Authorization"]; }
 

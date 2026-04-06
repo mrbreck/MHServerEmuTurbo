@@ -4,7 +4,6 @@ using MHServerEmu.Core.Logging;
 using MHServerEmu.Core.Network;
 using MHServerEmu.Core.Threading;
 using MHServerEmu.WebFrontend.Models;
-
 namespace MHServerEmu.WebFrontend.Network
 {
     /// <summary>
@@ -19,7 +18,8 @@ namespace MHServerEmu.WebFrontend.Network
         private readonly TaskManager<ServiceMessage.MTXStoreESBalanceResponse> _esBalanceTaskManager = new();
         private readonly TaskManager<ServiceMessage.MTXStoreESConvertResponse> _esConvertTaskManager = new();
         private readonly TaskManager<ServiceMessage.AccountOperationResponse> _accountOperationTaskManager = new();
-
+        private readonly TaskManager<ServiceMessage.GameOptionsGetResponse> _gameOptionsGetTaskManager = new();
+        private readonly TaskManager<ServiceMessage.GameOptionsSetResponse> _gameOptionsSetTaskManager = new();
         public static GameServiceTaskManager Instance { get; } = new();
 
         private GameServiceTaskManager() { }
@@ -127,6 +127,41 @@ namespace MHServerEmu.WebFrontend.Network
         public void OnAccountOperationResponse(in ServiceMessage.AccountOperationResponse response)
         {
             _accountOperationTaskManager.CompleteTask(response.RequestId, response);
+        }
+
+        /// <summary>
+        /// Asynchronously retrieves game options (vaporizer thresholds) for a player.
+        /// </summary>
+        public async Task<ServiceMessage.GameOptionsGetResponse> GetGameOptionsAsync(string email, string token)
+        {
+            var task = _gameOptionsGetTaskManager.CreateTask();
+            ServerManager.Instance.SendMessageToService(GameServiceType.PlayerManager,
+                new ServiceMessage.GameOptionsGetRequest(task.Id, email, token));
+            var response = await CompleteTaskWithTimeout(task);
+            return response ?? new(task.Id, (int)HttpStatusCode.RequestTimeout);
+        }
+
+        public void OnGameOptionsGetResponse(in ServiceMessage.GameOptionsGetResponse response)
+        {
+            _gameOptionsGetTaskManager.CompleteTask(response.RequestId, response);
+        }
+
+        /// <summary>
+        /// Asynchronously sets game options (vaporizer thresholds) for a player.
+        /// </summary>
+        public async Task<ServiceMessage.GameOptionsSetResponse> SetGameOptionsAsync(
+            string email, string token, List<ServiceMessage.VaporizerSlot> vaporizerSlots)
+        {
+            var task = _gameOptionsSetTaskManager.CreateTask();
+            ServerManager.Instance.SendMessageToService(GameServiceType.PlayerManager,
+                new ServiceMessage.GameOptionsSetRequest(task.Id, email, token, vaporizerSlots));
+            var response = await CompleteTaskWithTimeout(task);
+            return response ?? new(task.Id, (int)HttpStatusCode.RequestTimeout);
+        }
+
+        public void OnGameOptionsSetResponse(in ServiceMessage.GameOptionsSetResponse response)
+        {
+            _gameOptionsSetTaskManager.CompleteTask(response.RequestId, response);
         }
 
         /// <summary>

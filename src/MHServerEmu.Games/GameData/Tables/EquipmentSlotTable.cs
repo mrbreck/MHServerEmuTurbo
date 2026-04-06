@@ -55,6 +55,21 @@ namespace MHServerEmu.Games.GameData.Tables
             return slot;
         }
 
+        public EquipmentInvUISlot EquipmentUISlotForTeamUp(ItemPrototype itemProto, AgentTeamUpPrototype teamUpProto)
+        {
+            if (itemProto == null) return Logger.WarnReturn(EquipmentInvUISlot.Invalid, "EquipmentUISlotForTeamUp(): itemProto == null");
+            if (teamUpProto?.EquipmentInventories == null) return EquipmentInvUISlot.Invalid;
+
+            foreach (AvatarEquipInventoryAssignmentPrototype assignmentProto in teamUpProto.EquipmentInventories)
+            {
+                InventoryPrototype invProto = assignmentProto.Inventory.As<InventoryPrototype>();
+                if (invProto.AllowEntity(itemProto))
+                    return assignmentProto.UISlot;
+            }
+
+            return EquipmentInvUISlot.Invalid;
+        }
+
         private static EquipmentInvUISlot FindEquipmentUISlotForAvatar(ItemPrototype itemProto, AvatarPrototype avatarProto)
         {
             // Named EquipmentSlotTable::equipmentUISlotForAvatar() in the client
