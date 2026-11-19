@@ -3,7 +3,9 @@ using MHServerEmu.Core.Config;
 using MHServerEmu.Core.Logging;
 using MHServerEmu.Core.Network;
 using MHServerEmu.Games.Entities;
+using MHServerEmu.Games.Entities.Options;
 using MHServerEmu.Games.GameData;
+using MHServerEmu.Games.Loot;
 using MHServerEmu.Games.MTXStore;
 using MHServerEmu.Games.Properties;
 using MHServerEmu.Games.Regions;
@@ -107,6 +109,14 @@ namespace MHServerEmu.Games.Network
 
                 case ServiceMessage.MTXStoreESConvertGameRequest mtxStoreESConvertGameRequest:
                     OnMTXStoreESConvertGameRequest(mtxStoreESConvertGameRequest);
+                    break;
+
+                case ServiceMessage.GameOptionsGetGameRequest gameOptionsGetGameRequest:
+                    OnGameOptionsGetGameRequest(gameOptionsGetGameRequest);
+                    break;
+
+                case ServiceMessage.GameOptionsSetGameRequest gameOptionsSetGameRequest:
+                    OnGameOptionsSetGameRequest(gameOptionsSetGameRequest);
                     break;
 
                 default:
@@ -375,6 +385,36 @@ namespace MHServerEmu.Games.Network
             ServiceMessage.MTXStoreESConvertGameResponse response = new(mtxStoreESConvertGameRequest.RequestId, gAmount > 0);
             ServerManager.Instance.SendMessageToService(GameServiceType.PlayerManager, response);
 
+            return true;
+        }
+
+        private bool OnGameOptionsGetGameRequest(in ServiceMessage.GameOptionsGetGameRequest request)
+        {
+            Player player = Game.EntityManager.GetEntityByDbGuid<Player>(request.PlayerDbId);
+            if (player == null) return Logger.WarnReturn(false, "OnGameOptionsGetGameRequest(): player == null");
+
+            var slots = new List<ServiceMessage.VaporizerSlot>();
+            foreach (EquipmentInvUISlot slot in GameplayOptions.VaporizableSlots)
+                slots.Add(new ServiceMessage.VaporizerSlot { SlotId = (int)slot, RarityId = (ulong)player.GameplayOptions.GetArmorRarityVaporizeThreshold(slot) });
+
+            ServiceMessage.GameOptionsGetGameResponse response = new(request.RequestId, slots);
+            ServerManager.Instance.SendMessageToService(GameServiceType.PlayerManager, response);
+            return true;
+        }
+
+        private bool OnGameOptionsSetGameRequest(in ServiceMessage.GameOptionsSetGameRequest request)
+        {
+            Player player = Game.EntityManager.GetEntityByDbGuid<Player>(request.PlayerDbId);
+            if (player == null) return Logger.WarnReturn(false, "OnGameOptionsSetGameRequest(): player == null");
+
+            if (request.VaporizerSlots != null)
+                foreach (ServiceMessage.VaporizerSlot slot in request.VaporizerSlots)
+                    player.GameplayOptions.SetArmorRarityVaporizeThreshold((PrototypeId)slot.RarityId, (EquipmentInvUISlot)slot.SlotId);
+
+            player.PlayerConnection?.SaveWithNotification();
+
+            ServiceMessage.GameOptionsSetGameResponse response = new(request.RequestId, true);
+            ServerManager.Instance.SendMessageToService(GameServiceType.PlayerManager, response);
             return true;
         }
 

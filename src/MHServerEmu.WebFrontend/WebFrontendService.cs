@@ -6,6 +6,7 @@ using MHServerEmu.Core.Network.Web;
 using MHServerEmu.WebFrontend.Handlers;
 using MHServerEmu.WebFrontend.Handlers.MTXStore;
 using MHServerEmu.WebFrontend.Handlers.WebApi;
+using MHServerEmu.WebFrontend.Handlers.GameOptions;
 using MHServerEmu.WebFrontend.Network;
 
 namespace MHServerEmu.WebFrontend
@@ -49,6 +50,12 @@ namespace MHServerEmu.WebFrontend
             // MTXStore handlers are used for the Add G panel in the client UI.
             _webService.RegisterHandler("/MTXStore/AddG", new AddGWebHandler());
             _webService.RegisterHandler("/MTXStore/AddG/Submit", new AddGSubmitWebHandler());
+
+            // Game options API — vaporize thresholds for all equipment slots.
+            // GET  /api/gameoptions?email=x&token=y  → returns rarities + current thresholds
+            // POST /api/gameoptions                  → sets thresholds (body JSON)
+            // Auth is via PlatformTicket (same mechanism as the MTX store).
+            _webService.RegisterHandler("/api/gameoptions", new GameOptionsWebHandler());
 
             if (config.EnableWebApi)
             {

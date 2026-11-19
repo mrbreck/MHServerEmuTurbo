@@ -27,6 +27,14 @@ namespace MHServerEmu.WebFrontend.Network
                     GameServiceTaskManager.Instance.OnAccountOperationResponse(accountOperationResponse);
                     break;
 
+                case ServiceMessage.GameOptionsGetResponse gameOptionsGetResponse:
+                    GameServiceTaskManager.Instance.OnGameOptionsGetResponse(gameOptionsGetResponse);
+                    break;
+
+                case ServiceMessage.GameOptionsSetResponse gameOptionsSetResponse:
+                    GameServiceTaskManager.Instance.OnGameOptionsSetResponse(gameOptionsSetResponse);
+                    break;
+
                 default:
                     Logger.Warn($"ReceiveServiceMessage(): Unhandled service message type {message.GetType().Name}");
                     break;

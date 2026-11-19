@@ -67,6 +67,25 @@ namespace MHServerEmu.Games.Entities.Options
 
         private Player _owner;
 
+        /// <summary>
+        /// All <see cref="EquipmentInvUISlot"/> values that support vaporize thresholds.
+        /// </summary>
+        public static readonly IReadOnlyList<EquipmentInvUISlot> VaporizableSlots = new[]
+        {
+            EquipmentInvUISlot.Gear01,
+            EquipmentInvUISlot.Gear02,
+            EquipmentInvUISlot.Gear03,
+            EquipmentInvUISlot.Gear04,
+            EquipmentInvUISlot.Gear05,
+            EquipmentInvUISlot.Ring,
+            EquipmentInvUISlot.Insignia,
+            EquipmentInvUISlot.CostumeCore,  // Catalyst
+            EquipmentInvUISlot.Artifact01,   // TeamUp Gear 1
+            EquipmentInvUISlot.Artifact02,   // TeamUp Gear 2
+            EquipmentInvUISlot.Artifact03,   // TeamUp Gear 3
+            EquipmentInvUISlot.Artifact04,   // TeamUp Gear 4
+        };
+
         private long[] _optionSettings = new long[(int)GameplayOptionSetting.NumSettings];                      // Various settings (see enum above)
         private SortedDictionary<PrototypeId, bool> _chatChannelFilterDict = new();                             // Whether the channel is included in the main chat tab 
         private PrototypeId[] _chatTabChannels = new PrototypeId[NumChatTabs];                                  // Chat channels bound to tabs other than the main one
@@ -112,7 +131,8 @@ namespace MHServerEmu.Games.Entities.Options
             for (int i = 0; i < numChannels; i++)
                 _chatTabChannels[i] = (PrototypeId)netStruct.ChatTabChannelsArrayList[i].ChannelProtoId;
 
-            // Vaporize thresholds
+            // Vaporize thresholds — only Gear01–05 come from the protobuf (positional array).
+            // All other vaporizable slots are server-side extensions; initialise them to Invalid.
             for (var slot = EquipmentInvUISlot.Gear01; slot <= EquipmentInvUISlot.Gear05; slot++)
             {
                 int index = (int)slot - 1;
@@ -124,6 +144,14 @@ namespace MHServerEmu.Games.Entities.Options
 
                 _armorRarityVaporizeThresholdDict[slot] = (PrototypeId)netStruct.ArmorRarityVaporizeThresholdProtoIdList[(int)slot - 1]; ;
             }
+
+            _armorRarityVaporizeThresholdDict[EquipmentInvUISlot.Ring]        = PrototypeId.Invalid;
+            _armorRarityVaporizeThresholdDict[EquipmentInvUISlot.Insignia]    = PrototypeId.Invalid;
+            _armorRarityVaporizeThresholdDict[EquipmentInvUISlot.CostumeCore] = PrototypeId.Invalid;
+            _armorRarityVaporizeThresholdDict[EquipmentInvUISlot.Artifact01]  = PrototypeId.Invalid;
+            _armorRarityVaporizeThresholdDict[EquipmentInvUISlot.Artifact02]  = PrototypeId.Invalid;
+            _armorRarityVaporizeThresholdDict[EquipmentInvUISlot.Artifact03]  = PrototypeId.Invalid;
+            _armorRarityVaporizeThresholdDict[EquipmentInvUISlot.Artifact04]  = PrototypeId.Invalid;
         }
 
         public bool Serialize(Archive archive)
@@ -137,6 +165,28 @@ namespace MHServerEmu.Games.Entities.Options
             success &= Serializer.Transfer(archive, _chatTabChannels);
             success &= Serializer.Transfer(archive, _optionSettings);
             success &= Serializer.Transfer(archive, ref _armorRarityVaporizeThresholdDict);
+
+            // All vaporizable slots beyond Gear01–05 are server-side extensions not present in
+            // older archives. Ensure they always exist after unpacking, and remove Medal if
+            // it was saved by an older version.
+            if (archive.IsUnpacking)
+            {
+                // Ensure all server-side slots are present after loading older archives
+                foreach (var slot in new[] {
+                    EquipmentInvUISlot.Ring,
+                    EquipmentInvUISlot.Insignia,
+                    EquipmentInvUISlot.CostumeCore,
+                    EquipmentInvUISlot.Artifact01,
+                    EquipmentInvUISlot.Artifact02,
+                    EquipmentInvUISlot.Artifact03,
+                    EquipmentInvUISlot.Artifact04 })
+                {
+                    if (_armorRarityVaporizeThresholdDict.ContainsKey(slot) == false)
+                        _armorRarityVaporizeThresholdDict[slot] = PrototypeId.Invalid;
+                }
+                // Remove Medal if present in older saves
+                _armorRarityVaporizeThresholdDict.Remove(EquipmentInvUISlot.Medal);
+            }
 
             return success;
         }
@@ -296,6 +346,14 @@ namespace MHServerEmu.Games.Entities.Options
                 if (IsGearSlotVaporizing(slot) == false) continue;
                 _armorRarityVaporizeThresholdDict[slot] = PrototypeId.Invalid;
             }
+
+            _armorRarityVaporizeThresholdDict[EquipmentInvUISlot.Ring]       = PrototypeId.Invalid;
+            _armorRarityVaporizeThresholdDict[EquipmentInvUISlot.Insignia]    = PrototypeId.Invalid;
+            _armorRarityVaporizeThresholdDict[EquipmentInvUISlot.CostumeCore] = PrototypeId.Invalid;
+            _armorRarityVaporizeThresholdDict[EquipmentInvUISlot.Artifact01] = PrototypeId.Invalid;
+            _armorRarityVaporizeThresholdDict[EquipmentInvUISlot.Artifact02] = PrototypeId.Invalid;
+            _armorRarityVaporizeThresholdDict[EquipmentInvUISlot.Artifact03] = PrototypeId.Invalid;
+            _armorRarityVaporizeThresholdDict[EquipmentInvUISlot.Artifact04] = PrototypeId.Invalid;
         }
 
         /// <summary>
@@ -375,7 +433,14 @@ namespace MHServerEmu.Games.Entities.Options
         /// </summary>
         private bool IsGearSlotVaporizing(EquipmentInvUISlot slot)
         {
-            return slot >= EquipmentInvUISlot.Gear01 && slot <= EquipmentInvUISlot.Gear05;
+            return (slot >= EquipmentInvUISlot.Gear01 && slot <= EquipmentInvUISlot.Gear05)
+                || slot == EquipmentInvUISlot.Ring
+                || slot == EquipmentInvUISlot.Insignia
+                || slot == EquipmentInvUISlot.CostumeCore  // Catalyst
+                || slot == EquipmentInvUISlot.Artifact01  // TeamUp Gear 1
+                || slot == EquipmentInvUISlot.Artifact02  // TeamUp Gear 2
+                || slot == EquipmentInvUISlot.Artifact03  // TeamUp Gear 3
+                || slot == EquipmentInvUISlot.Artifact04; // TeamUp Gear 4
         }
 
         /// <summary>

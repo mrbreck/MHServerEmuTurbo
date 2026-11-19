@@ -19,10 +19,12 @@
   <PropertyGroup>
     <TieredCompilationQuickJit>false</TieredCompilationQuickJit>
   </PropertyGroup>
-
+	
+<!--
   <PropertyGroup Condition="$([MSBuild]::IsOSPlatform('Windows'))">
     <DefineConstants>OS_WINDOWS</DefineConstants>
   </PropertyGroup>
+  -->
 
   <ItemGroup>
     <Content Include="icon.ico" />

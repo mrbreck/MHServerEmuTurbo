@@ -137,6 +137,22 @@ namespace MHServerEmu.PlayerManagement.Network
                     OnAccountOperationRequest(accountOperationRequest);
                     break;
 
+                case ServiceMessage.GameOptionsGetRequest gameOptionsGetRequest:
+                    OnGameOptionsGetRequest(gameOptionsGetRequest);
+                    break;
+
+                case ServiceMessage.GameOptionsSetRequest gameOptionsSetRequest:
+                    OnGameOptionsSetRequest(gameOptionsSetRequest);
+                    break;
+
+                case ServiceMessage.GameOptionsGetGameResponse gameOptionsGetGameResponse:
+                    OnGameOptionsGetGameResponse(gameOptionsGetGameResponse);
+                    break;
+
+                case ServiceMessage.GameOptionsSetGameResponse gameOptionsSetGameResponse:
+                    OnGameOptionsSetGameResponse(gameOptionsSetGameResponse);
+                    break;
+
                 case ServiceMessage.SetWhitelistEnabled setWhitelistEnabled:
                     OnSetWhitelistEnabled(setWhitelistEnabled);
                     break;
@@ -636,6 +652,59 @@ namespace MHServerEmu.PlayerManagement.Network
         {
             _playerManager.SessionManager.SetWhitelistEnabled(setWhitelistEnabled.Enable);
 
+            return true;
+        }
+
+        private bool OnGameOptionsGetRequest(in ServiceMessage.GameOptionsGetRequest request)
+        {
+            PlayerHandle player = null;
+            if (_playerManager.SessionManager.VerifyPlatformTicket(request.Email, request.Token, out ulong playerDbId))
+                player = _playerManager.ClientManager.GetPlayer(playerDbId);
+
+            if (player == null || player.State != PlayerHandleState.InGame)
+            {
+                ServiceMessage.GameOptionsGetResponse response = new(request.RequestId, (int)HttpStatusCode.Forbidden);
+                ServerManager.Instance.SendMessageToService(GameServiceType.WebFrontend, response);
+                return true;
+            }
+
+            Logger.Info($"Authenticated GameOptions GET from player [{player}]");
+            ServiceMessage.GameOptionsGetGameRequest gameRequest = new(request.RequestId, player.CurrentGame.Id, playerDbId);
+            ServerManager.Instance.SendMessageToService(GameServiceType.GameInstance, gameRequest);
+            return true;
+        }
+
+        private bool OnGameOptionsSetRequest(in ServiceMessage.GameOptionsSetRequest request)
+        {
+            PlayerHandle player = null;
+            if (_playerManager.SessionManager.VerifyPlatformTicket(request.Email, request.Token, out ulong playerDbId))
+                player = _playerManager.ClientManager.GetPlayer(playerDbId);
+
+            if (player == null || player.State != PlayerHandleState.InGame)
+            {
+                ServiceMessage.GameOptionsSetResponse response = new(request.RequestId, (int)HttpStatusCode.Forbidden);
+                ServerManager.Instance.SendMessageToService(GameServiceType.WebFrontend, response);
+                return true;
+            }
+
+            Logger.Info($"Authenticated GameOptions SET from player [{player}]");
+            ServiceMessage.GameOptionsSetGameRequest gameRequest = new(request.RequestId, player.CurrentGame.Id, playerDbId, request.VaporizerSlots);
+            ServerManager.Instance.SendMessageToService(GameServiceType.GameInstance, gameRequest);
+            return true;
+        }
+
+        private bool OnGameOptionsGetGameResponse(in ServiceMessage.GameOptionsGetGameResponse gameResponse)
+        {
+            ServiceMessage.GameOptionsGetResponse response = new(gameResponse.RequestId, (int)HttpStatusCode.OK, gameResponse.VaporizerSlots);
+            ServerManager.Instance.SendMessageToService(GameServiceType.WebFrontend, response);
+            return true;
+        }
+
+        private bool OnGameOptionsSetGameResponse(in ServiceMessage.GameOptionsSetGameResponse gameResponse)
+        {
+            int statusCode = gameResponse.Success ? (int)HttpStatusCode.OK : (int)HttpStatusCode.InternalServerError;
+            ServiceMessage.GameOptionsSetResponse response = new(gameResponse.RequestId, statusCode);
+            ServerManager.Instance.SendMessageToService(GameServiceType.WebFrontend, response);
             return true;
         }
 

@@ -36,15 +36,34 @@ namespace MHServerEmu.Games.Loot
             switch (lootResult.Type)
             {
                 case LootType.Item:
-                    // Only armor slots should be vaporized
-                    ArmorPrototype armorProto = lootResult.ItemSpec?.ItemProtoRef.As<ArmorPrototype>();
-                    if (armorProto == null)
+                    ItemPrototype itemProto = lootResult.ItemSpec?.ItemProtoRef.As<ItemPrototype>();
+                    if (itemProto == null)
                         return false;
 
-                    AvatarPrototype avatarProto = avatarProtoRef.As<AvatarPrototype>();
-                    if (avatarProto == null) return Logger.WarnReturn(false, "ShouldVaporize(): avatarProto == null");
+                    // Resolve the equipment slot. GetInventorySlotForAgent handles avatar items via
+                    // the slot table and non-avatar agents (e.g. AgentTeamUpPrototype) via DefaultEquipmentSlot.
+                    // Team-up gear always has rollFor=AvatarPrototype (IsDroppableForAgent returns true for avatars),
+                    // so the avatar slot table lookup returns Invalid for it. Fall back to DefaultEquipmentSlot,
+                    // then to the player's current team-up agent as a last resort.
+                    AgentPrototype rollForProto = avatarProtoRef.As<AgentPrototype>();
+                    if (rollForProto == null)
+                        return Logger.WarnReturn(false, $"ShouldVaporizeLootResult(): rollFor is not an AgentPrototype: {avatarProtoRef}");
 
-                    EquipmentInvUISlot slot = GameDataTables.Instance.EquipmentSlotTable.EquipmentUISlotForAvatar(armorProto, avatarProto);
+                    EquipmentInvUISlot slot = itemProto.GetInventorySlotForAgent(rollForProto);
+
+                    if (slot == EquipmentInvUISlot.Invalid)
+                        slot = itemProto.DefaultEquipmentSlot;
+
+                    if (slot == EquipmentInvUISlot.Invalid)
+                    {
+                        AgentTeamUpPrototype teamUpProto = player.CurrentAvatar?.CurrentTeamUpAgent?.Prototype as AgentTeamUpPrototype;
+                        if (teamUpProto != null)
+                            slot = GameDataTables.Instance.EquipmentSlotTable.EquipmentUISlotForTeamUp(itemProto, teamUpProto);
+                    }
+
+                    if (slot == EquipmentInvUISlot.Invalid)
+                        return false;
+
                     PrototypeId vaporizeThresholdRarityProtoRef = player.GameplayOptions.GetArmorRarityVaporizeThreshold(slot);
                     if (vaporizeThresholdRarityProtoRef == PrototypeId.Invalid)
                         return false;

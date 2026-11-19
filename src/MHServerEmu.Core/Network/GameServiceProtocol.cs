@@ -803,6 +803,95 @@ namespace MHServerEmu.Core.Network
 
         #endregion
 
+        #region GameOptions
+
+        /// <summary>
+        /// A single vaporize threshold entry carried in GameOptions service messages.
+        /// <see cref="SlotId"/> is the <c>int</c> value of <c>EquipmentInvUISlot</c>.
+        /// <see cref="RarityId"/> is the rarity prototype ID; 0 means disabled.
+        /// </summary>
+        public sealed class VaporizerSlot
+        {
+            public int   SlotId   { get; init; }
+            public ulong RarityId { get; init; }
+        }
+
+        // WebFrontend -> PlayerManager
+        public readonly struct GameOptionsGetRequest(ulong requestId, string email, string token)
+            : IGameServiceMessage
+        {
+            public readonly ulong  RequestId = requestId;
+            public readonly string Email     = email;
+            public readonly string Token     = token;
+        }
+
+        // PlayerManager -> WebFrontend
+        public readonly struct GameOptionsGetResponse(ulong requestId, int statusCode,
+            List<VaporizerSlot> vaporizerSlots = null)
+            : IGameServiceMessage
+        {
+            public readonly ulong              RequestId      = requestId;
+            public readonly int                StatusCode     = statusCode;
+            public readonly List<VaporizerSlot> VaporizerSlots = vaporizerSlots;
+        }
+
+        // PlayerManager -> Game
+        public readonly struct GameOptionsGetGameRequest(ulong requestId, ulong gameId, ulong playerDbId)
+            : IGameServiceMessage
+        {
+            public readonly ulong RequestId  = requestId;
+            public readonly ulong GameId     = gameId;
+            public readonly ulong PlayerDbId = playerDbId;
+        }
+
+        // Game -> PlayerManager
+        public readonly struct GameOptionsGetGameResponse(ulong requestId, List<VaporizerSlot> vaporizerSlots)
+            : IGameServiceMessage
+        {
+            public readonly ulong              RequestId      = requestId;
+            public readonly List<VaporizerSlot> VaporizerSlots = vaporizerSlots;
+        }
+
+        // WebFrontend -> PlayerManager
+        public readonly struct GameOptionsSetRequest(ulong requestId, string email, string token,
+            List<VaporizerSlot> vaporizerSlots)
+            : IGameServiceMessage
+        {
+            public readonly ulong              RequestId      = requestId;
+            public readonly string             Email          = email;
+            public readonly string             Token          = token;
+            public readonly List<VaporizerSlot> VaporizerSlots = vaporizerSlots;
+        }
+
+        // PlayerManager -> WebFrontend
+        public readonly struct GameOptionsSetResponse(ulong requestId, int statusCode)
+            : IGameServiceMessage
+        {
+            public readonly ulong RequestId  = requestId;
+            public readonly int   StatusCode = statusCode;
+        }
+
+        // PlayerManager -> Game
+        public readonly struct GameOptionsSetGameRequest(ulong requestId, ulong gameId, ulong playerDbId,
+            List<VaporizerSlot> vaporizerSlots)
+            : IGameServiceMessage
+        {
+            public readonly ulong              RequestId      = requestId;
+            public readonly ulong              GameId         = gameId;
+            public readonly ulong              PlayerDbId     = playerDbId;
+            public readonly List<VaporizerSlot> VaporizerSlots = vaporizerSlots;
+        }
+
+        // Game -> PlayerManager
+        public readonly struct GameOptionsSetGameResponse(ulong requestId, bool success)
+            : IGameServiceMessage
+        {
+            public readonly ulong RequestId = requestId;
+            public readonly bool  Success   = success;
+        }
+
+        #endregion
+
         #region Account
 
         /// <summary>
